@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -13,7 +16,8 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login']]);
+        // $this->middleware('auth:api', ['except' => ['login']]);
+        $this->middleware('auth.jwt', ['except' => ['login']]);
     }
 
     /**
@@ -76,7 +80,23 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 6000
+            'expires_in' => auth()->factory()->getTTL() * (60*24),
+            'authUser' => $this->getUser(),
         ]);
+    }
+
+    public function getUser(){
+        $auth_user = Auth::user('api');
+        
+        $roleUsers = DB::table('role_user')->select('role.id as roleId', 'role.name as roleName')
+        ->leftjoin('roles as role', 'role.id', '=', 'role_user.role_id')
+        ->where('user_id', $auth_user->id)
+        ->get()->pluck('roleName');
+        $user = User::where('id', $auth_user['id'])->first();
+
+        return [
+            'user' => $user,
+            'roleUser' => $roleUsers,
+        ];
     }
 }
