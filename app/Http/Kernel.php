@@ -61,6 +61,7 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
 
         'auth.jwt' => \App\Http\Middleware\MiddlewareJWT::class,
+        'set.locale' => \App\Http\Middleware\SetLocale::class,
         
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,

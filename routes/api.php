@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\QuotationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -39,7 +40,10 @@ Route::group([
 // api method = get, post, put, delete
 Route::group([
 
-    'middleware' => 'auth.jwt',
+    'middleware' => [
+        'auth.jwt',
+        'set.locale',
+    ],
     'role:superadmin|admin',
     'prefix' => 'admin'
 
@@ -63,6 +67,15 @@ Route::group([
     Route::post('add-quotation-detail/{id}', [QuotationController::class, 'addQuotationDetail'])->name('add.quotation.detail');
     Route::delete('delete-quotation/{id}', [QuotationController::class, 'deleteQuotation'])->name('delete.quotation');
     Route::delete('delete-quotation-detail/{id}', [QuotationController::class, 'deleteQuotationDetail'])->name('delete.quotation.detail');
+    
+    Route::get('list-invoices', [InvoiceController::class, 'listInvoices']);
+    Route::get('list-invoice-detail/{id}', [InvoiceController::class, 'listInvoiceDetail']);
+    Route::post('add-invoice', [InvoiceController::class, 'addInvoice'])->name('add.invoice');
+    Route::put('edit-invoice/{id}', [InvoiceController::class, 'editInvoice'])->name('edit.invoice');
+    Route::put('edit-invoice-detail/{id}', [InvoiceController::class, 'editInvoiceDetail'])->name('edit.invoice.detail');
+    Route::post('add-invoice-detail/{id}', [InvoiceController::class, 'addInvoiceDetail'])->name('add.invoice.detail');
+    Route::delete('delete-invoice/{id}', [InvoiceController::class, 'deleteInvoice'])->name('delete.invoice');
+    Route::delete('delete-invoice-detail/{id}', [InvoiceController::class, 'deleteInvoiceDetail'])->name('delete.invoice.detail');
 
 });
 

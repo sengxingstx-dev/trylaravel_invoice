@@ -10,23 +10,44 @@ use App\Models\Currency;
 use Illuminate\Http\Request;
 use App\Models\QuotationDetail;
 use App\Models\User;
+use App\Services\CalculateService;
+use App\Traits\ResponseAPI;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class QuotationController extends Controller
 {
+    use ResponseAPI;
+
+    public $calculateService;
+
+
+    public function __construct(CalculateService $calculateService)
+    {
+        $this->calculateService = $calculateService;
+    }
+
     public function listQuotations() {
         $items = Quotation::orderBy('id', 'desc')->get();
-        $items->map(function($item) {
-            $item['countDetail'] = QuotationDetail::where('quotation_id', $item['id'])->get()->count();
-            $item['company'] = Company::where('id', $item['company_id'])->first();
-            $item['currency'] = Currency::where('id', $item['currency_id'])->first();
-            $item['user'] = User::where('id', $item['created_by'])->first();
+
+        // format 
+        $items->transform(function($item) {
+            return $item->format();
         });
 
-        return response()->json([
-            'quotations' => $items,
-        ]);
+        return $this->success($items, 200);
+        // return $this->errors('Not found', 404);
+
+        // $items->map(function($item) {
+        //     $item['countDetail'] = QuotationDetail::where('quotation_id', $item['id'])->get()->count();
+        //     $item['company'] = Company::where('id', $item['company_id'])->first();
+        //     $item['currency'] = Currency::where('id', $item['currency_id'])->first();
+        //     $item['user'] = User::where('id', $item['created_by'])->first();
+        // });
+
+        // return response()->json([
+        //     'quotations' => $items,
+        // ]);
     }
     
     public function listQuotationDetail($id) {
@@ -84,13 +105,7 @@ class QuotationController extends Controller
             }
 
             /** calculate the price */
-            $calculateTax = $sumSubTotal * $request['tax'] / 100;
-            $calculateDiscount = $sumSubTotal * $request['discount'] / 100;
-            $sumTotal = ($sumSubTotal - $calculateDiscount) + $calculateTax;
-
-            $addQuotation->sub_total = $sumSubTotal;
-            $addQuotation->total = $sumTotal;
-            $addQuotation->save();
+            $this->calculateService->calculateTotal($request, $sumSubTotal, $addQuotation['id']);
 
         DB::commit();
 
@@ -144,16 +159,17 @@ class QuotationController extends Controller
         $editQuotation->created_by = Auth::user('api')->id;
         $editQuotation->save();
         
+        $this->calculateService->calculateUpdateTotal($request);
         
-        /** update the total price */
-        $sumSubTotal = QuotationDetail::where('quotation_id', $request['id'])->get()->sum('total');
-        $calculateTax = $sumSubTotal * $request['tax'] / 100;
-        $calculateDiscount = $sumSubTotal * $request['discount'] / 100;
-        $sumTotal = ($sumSubTotal - $calculateDiscount) + $calculateTax;
+        // /** update the total price */
+        // $sumSubTotal = QuotationDetail::where('quotation_id', $request['id'])->get()->sum('total');
+        // $calculateTax = $sumSubTotal * $request['tax'] / 100;
+        // $calculateDiscount = $sumSubTotal * $request['discount'] / 100;
+        // $sumTotal = ($sumSubTotal - $calculateDiscount) + $calculateTax;
 
-        $editQuotation->sub_total = $sumSubTotal;
-        $editQuotation->total = $sumTotal;
-        $editQuotation->save();
+        // $editQuotation->sub_total = $sumSubTotal;
+        // $editQuotation->total = $sumTotal;
+        // $editQuotation->save();
 
         return response()->json([
             'success' => true,
@@ -174,6 +190,9 @@ class QuotationController extends Controller
 
         /** update the total price */
         $editQuotation = Quotation::find($editQuotationDetail['quotation_id']);
+
+        // $this->calculateService->calculateUpdateTotal($request, $editQuotation['id']);
+
         $sumSubTotal = QuotationDetail::where('quotation_id', $editQuotationDetail['quotation_id'])->get()->sum('total');
 
         $calculateTax = $sumSubTotal * $editQuotation['tax'] / 100;
@@ -197,7 +216,7 @@ class QuotationController extends Controller
 
         return response()->json([
             'success' => true,
-            'msg' => 'Successfully edited'
+            'msg' => 'Successfully deleted'
         ]);
     }
 

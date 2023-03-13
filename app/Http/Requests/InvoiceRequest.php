@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class QuotationRequest extends FormRequest
+class InvoiceRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -14,16 +14,15 @@ class QuotationRequest extends FormRequest
      */
     public function authorize()
     {
-        return auth('api')->user()->hasRole('superadmin|admin');                                            
+        return auth('api')->user()->hasRole('superadmin|admin'); 
     }
 
-
     public function prepareForValidation() {
-        if($this->isMethod('put') && $this->routeIs('edit.quotation') 
-            || $this->isMethod('put') && $this->routeIs('edit.quotation.detail')
-            || $this->isMethod('post') && $this->routeIs('add.quotation.detail')
-            || $this->isMethod('delete') && $this->routeIs('delete.quotation')
-            || $this->isMethod('delete') && $this->routeIs('delete.quotation.detail')
+        if($this->isMethod('put') && $this->routeIs('edit.invoice') 
+            || $this->isMethod('put') && $this->routeIs('edit.invoice.detail')
+            || $this->isMethod('post') && $this->routeIs('add.invoice.detail')
+            || $this->isMethod('delete') && $this->routeIs('delete.invoice')
+            || $this->isMethod('delete') && $this->routeIs('delete.invoice.detail')
         ) {  
             $this->merge([
                 'id' => $this->route()->parameters['id']
@@ -38,13 +37,14 @@ class QuotationRequest extends FormRequest
      */
     public function rules()
     {
-        if($this->isMethod('post') && $this->routeIs('add.quotation')) {
+        /** add invoice */
+        if($this->isMethod('post') && $this->routeIs('add.invoice')) {
             return [
-                'quotation_name' => [
+                'invoice_name' => [
                     'required',
                     // 'max:25',
                     'min:2',
-                    Rule::unique('quotations', 'quotation_name')
+                    Rule::unique('invoices', 'invoice_name')
                     ->ignore($this->id)
                 ],
                 'start_date' => 'required|date',
@@ -52,6 +52,10 @@ class QuotationRequest extends FormRequest
                 'note' => 'nullable',
                 'discount' => 'nullable|numeric',
                 'tax' => 'required|numeric',
+                'status' => [
+                    'required',
+                    Rule::in(['created', 'pending', 'paid', 'canceled'])
+                ],
                 'company_id' => [
                     'required',
                     'numeric',
@@ -62,32 +66,33 @@ class QuotationRequest extends FormRequest
                     'numeric',
                     Rule::exists('currencies', 'id')
                 ],
-                'quotation_details' => 'required|array',
-                'quotation_details.*.order' => [
+                'invoice_details' => 'required|array',
+                'invoice_details.*.order' => [
                     'required',
                     'numeric',
-                    Rule::unique('quotation_details', 'order_number')
+                    Rule::unique('invoice_details', 'order_number')
                     ->ignore($this->id)
                 ],
-                'quotation_details.*.name' => 'required',
-                'quotation_details.*.description' => 'required',
-                'quotation_details.*.quantity' => 'required|numeric',
-                'quotation_details.*.price' => 'required|numeric',
+                'invoice_details.*.name' => 'required',
+                'invoice_details.*.description' => 'required',
+                'invoice_details.*.quantity' => 'required|numeric',
+                'invoice_details.*.price' => 'required|numeric',
             ];
         }
 
-        if($this->isMethod('put') && $this->routeIs('edit.quotation')) {
+        /** edit invoice */
+        if($this->isMethod('put') && $this->routeIs('edit.invoice')) {
             return [
                 'id' => [
                     'required',
                     'numeric',
-                    Rule::exists('quotations', 'id')
+                    Rule::exists('invoices', 'id')
                 ],
-                'quotation_name' => [
+                'invoice_name' => [
                     'required',
                     // 'max:25',
                     'min:2',
-                    Rule::unique('quotations', 'quotation_name')
+                    Rule::unique('invoices', 'invoice_name')
                     ->ignore($this->id)
                 ],
                 'start_date' => 'required|date',
@@ -95,6 +100,10 @@ class QuotationRequest extends FormRequest
                 'note' => 'nullable',
                 'discount' => 'nullable|numeric',
                 'tax' => 'required|numeric',
+                'status' => [
+                    'required',
+                    Rule::in(['created', 'pending', 'paid', 'canceled'])
+                ],
                 'company_id' => [
                     'required',
                     'numeric',
@@ -108,17 +117,30 @@ class QuotationRequest extends FormRequest
             ];
         }
 
-        if($this->isMethod('put') && $this->routeIs('edit.quotation.detail')) {
+        /** delete invoice */
+        if($this->isMethod('delete') && $this->routeIs('delete.invoice')) {
             return [
                 'id' => [
                     'required',
                     'numeric',
-                    Rule::exists('quotation_details', 'id')
+                    Rule::exists('invoices', 'id')
+                ]
+            ];
+        }
+
+        /** Invoice Degail */
+        // add invoice detail
+        if($this->isMethod('post') && $this->routeIs('add.invoice.detail')) {
+            return [
+                'id' => [
+                    'required',
+                    'numeric',
+                    Rule::exists('invoices', 'id')
                 ],
                 'order' => [
                     'required',
                     'numeric',
-                    Rule::unique('quotation_details', 'order_number')
+                    Rule::unique('invoice_details', 'order_number')
                     ->ignore($this->id)
                 ],
                 'name' => 'required',
@@ -128,18 +150,19 @@ class QuotationRequest extends FormRequest
 
             ];
         }
-        
-        if($this->isMethod('post') && $this->routeIs('add.quotation.detail')) {
+
+        /** edit invoice detail */
+        if($this->isMethod('put') && $this->routeIs('edit.invoice.detail')) {
             return [
                 'id' => [
                     'required',
                     'numeric',
-                    Rule::exists('quotations', 'id')
+                    Rule::exists('invoice_details', 'id')
                 ],
                 'order' => [
                     'required',
                     'numeric',
-                    Rule::unique('quotation_details', 'order_number')
+                    Rule::unique('invoice_details', 'order_number')
                     ->ignore($this->id)
                 ],
                 'name' => 'required',
@@ -149,32 +172,16 @@ class QuotationRequest extends FormRequest
 
             ];
         }
-        
-        if($this->isMethod('delete') && $this->routeIs('delete.quotation')) {
+
+        /** delete invoice detail */
+        if($this->isMethod('delete') && $this->routeIs('delete.invoice.detail')) {
             return [
                 'id' => [
                     'required',
                     'numeric',
-                    Rule::exists('quotations', 'id')
+                    Rule::exists('invoice_details', 'id')
                 ]
             ];
         }
-
-        if($this->isMethod('delete') && $this->routeIs('delete.quotation.detail')) {
-            return [
-                'id' => [
-                    'required',
-                    'numeric',
-                    Rule::exists('quotation_details', 'id')
-                ]
-            ];
-        }
-    }
-
-    public function messages()
-    {
-        return [
-            'start_date.required' => __('validation.required')
-        ];
     }
 }
